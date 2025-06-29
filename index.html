@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TFT Component Drop Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>TFT Component Drop Tracker</h1>
+    <div>
+        <label for="components">Select received components:</label>
+        <select id="componentSelect">
+            <option value="Sword">Sword</option>
+            <option value="Vest">Vest</option>
+            <option value="Rod">Rod</option>
+            <option value="Tear">Tear</option>
+            <option value="Bow">Bow</option>
+            <option value="Cloak">Cloak</option>
+            <option value="Belt">Belt</option>
+            <option value="Glove">Glove</option>
+        </select>
+        <button onclick="addComponent()">Add</button>
+        <button onclick="submitRound()">Submit Round</button>
+        <button onclick="undoLastRound()">Undo Last</button>
+        <button onclick="resetTracker()">Reset</button>
+    </div>
+    <div>
+        <h2>Current Pool</h2>
+        <table id="poolTable">
+            <thead>
+                <tr><th>Component</th><th>Count</th><th>Drop %</th></tr>
+            </thead>
+            <tbody id="poolBody"></tbody>
+        </table>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
