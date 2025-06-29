@@ -2,38 +2,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>TFT Component Drop Tracker</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>TFT Component Drop Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      color: #333;
+    }
+    .controls {
+      margin-bottom: 20px;
+    }
+    select, button {
+      margin-right: 10px;
+      padding: 5px 10px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 60%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #eee;
+    }
+    .log {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #333;
+    }
+  </style>
 </head>
 <body>
-    <h1>TFT Component Drop Tracker</h1>
-    <div>
-        <label for="components">Select received components:</label>
-        <select id="componentSelect">
-            <option value="Sword">Sword</option>
-            <option value="Vest">Vest</option>
-            <option value="Rod">Rod</option>
-            <option value="Tear">Tear</option>
-            <option value="Bow">Bow</option>
-            <option value="Cloak">Cloak</option>
-            <option value="Belt">Belt</option>
-            <option value="Glove">Glove</option>
-        </select>
-        <button onclick="addComponent()">Add</button>
-        <button onclick="submitRound()">Submit Round</button>
-        <button onclick="undoLastRound()">Undo Last</button>
-        <button onclick="resetTracker()">Reset</button>
-    </div>
-    <div>
-        <h2>Current Pool</h2>
-        <table id="poolTable">
-            <thead>
-                <tr><th>Component</th><th>Count</th><th>Drop %</th></tr>
-            </thead>
-            <tbody id="poolBody"></tbody>
-        </table>
-    </div>
-    <script src="script.js"></script>
+
+<h1>TFT Component Drop Tracker</h1>
+
+<div class="controls">
+  <label for="component">Select received component:</label>
+  <select id="component">
+    <option value="Sword">Sword</option>
+    <option value="Vest">Vest</option>
+    <option value="Rod">Rod</option>
+    <option value="Tear">Tear</option>
+    <option value="Bow">Bow</option>
+    <option value="Cloak">Cloak</option>
+    <option value="Belt">Belt</option>
+    <option value="Glove">Glove</option>
+  </select>
+  <button id="addBtn">Add</button>
+  <button id="submitBtn">Submit Round</button>
+  <button id="undoBtn">Undo</button>
+  <button id="resetBtn">Reset</button>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Count</th>
+      <th>Drop %</th>
+    </tr>
+  </thead>
+  <tbody id="tracker-table-body">
+  </tbody>
+</table>
+
+<div class="log" id="log"></div>
+
+<script>
+  const components = ["Sword", "Vest", "Rod", "Tear", "Bow", "Cloak", "Belt", "Glove"];
+  let pool = {};
+  let history = [];
+  let currentRound = [];
+
+  function resetTracker() {
+    pool = {};
+    components.forEach(c => pool[c] = 0);
+    history = [];
+    currentRound = [];
+    updateDisplay();
+    logMessage("Tracker reset.");
+  }
+
+  function addComponent() {
+    const selected = document.getElementById("component").value;
+    currentRound.push(selected);
+    logMessage(selected + " added to current round.");
+  }
+
+  function submitRound() {
+    if (currentRound.length === 0) {
+      logMessage("Please add components before submitting a round.");
+      return;
+    }
+    components.forEach(c => pool[c] = (pool[c] || 0) + 1);
+    currentRound.forEach(c => pool[c] = pool[c] - 1);
+    history.push([...currentRound]);
+    currentRound = [];
+    updateDisplay();
+    logMessage("Round submitted.");
+  }
+
+  function undoLastRound() {
+    if (history.length === 0) {
+      logMessage("Nothing to undo.");
+      return;
+    }
+    let last = history.pop();
+    components.forEach(c => pool[c] = pool[c] - 1);
+    last.forEach(c => pool[c] = pool[c] + 1);
+    updateDisplay();
+    logMessage("Last round undone.");
+  }
+
+  function updateDisplay() {
+    const tableBody = document.getElementById("tracker-table-body");
+    tableBody.innerHTML = "";
+    let total = Object.values(pool).reduce((a, b) => a + b, 0);
+    components.forEach(c => {
+      let count = pool[c] || 0;
+      let percent = total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0%";
+      let row = `<tr><td>${c}</td><td>${count}</td><td>${percent}</td></tr>`;
+      tableBody.innerHTML += row;
+    });
+  }
+
+  function logMessage(msg) {
+    document.getElementById("log").innerText = msg;
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("addBtn").addEventListener("click", addComponent);
+    document.getElementById("submitBtn").addEventListener("click", submitRound);
+    document.getElementById("undoBtn").addEventListener("click", undoLastRound);
+    document.getElementById("resetBtn").addEventListener("click", resetTracker);
+    resetTracker();
+  });
+</script>
+
 </body>
 </html>
