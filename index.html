@@ -3,40 +3,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TFT Component Drop Tracker</title>
+  <title>TFT Component Drop Tracker + Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 30px;
-      background-color: #f9f9f9;
+      background-color: #1c1c1e;
+      color: #f0f0f0;
+      padding: 30px;
     }
-    h1 {
-      color: #333;
+    h1, h2 {
+      color: #f9d342;
     }
     .controls {
       margin-bottom: 20px;
     }
-    select, button {
+    select, button, input {
       margin-right: 10px;
       padding: 5px 10px;
     }
     table {
       border-collapse: collapse;
-      width: 60%;
+      width: 100%;
+      margin-top: 20px;
+      background-color: #2c2c2e;
     }
     th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
+      border: 1px solid #444;
+      padding: 10px;
       text-align: center;
     }
     th {
-      background-color: #eee;
+      background-color: #3a3a3c;
+      color: #fff;
     }
-    .log {
+    .green { color: #00ff88; }
+    .orange { color: #ffaa00; }
+    .red { color: #ff5555; }
+    img {
+      width: 28px;
+      height: 28px;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    .log, .round-display {
       margin-top: 15px;
       font-size: 14px;
-      color: #333;
     }
   </style>
 </head>
@@ -62,6 +74,8 @@
   <button id="resetBtn">Reset</button>
 </div>
 
+<div class="round-display" id="roundCounter">Round: 0</div>
+
 <table>
   <thead>
     <tr>
@@ -76,19 +90,55 @@
 
 <div class="log" id="log"></div>
 
+<h2>🧩 Comp Planning & Extra Items</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Need</th>
+      <th>From Tracker</th>
+      <th>From Carousel / Augment</th>
+      <th>Total Owned</th>
+      <th>Still Needed</th>
+    </tr>
+  </thead>
+  <tbody id="planning-table-body">
+  </tbody>
+</table>
+<button id="resetPlanningBtn">Reset Needs</button>
+
 <script>
-  const components = ["Sword", "Vest", "Rod", "Tear", "Bow", "Cloak", "Belt", "Glove"];
-  let pool = {};
-  let history = [];
-  let currentRound = [];
+  const icons = {
+    "Sword": "https://static.wikia.nocookie.net/leagueoflegends/images/8/8f/B.F._Sword_item_HD.png",
+    "Vest": "https://static.wikia.nocookie.net/leagueoflegends/images/e/e1/Chain_Vest_item_HD.png",
+    "Rod": "https://static.wikia.nocookie.net/leagueoflegends/images/5/5b/Needlessly_Large_Rod_item_HD.png",
+    "Tear": "https://static.wikia.nocookie.net/leagueoflegends/images/e/e4/Tear_of_the_Goddess_item_HD.png",
+    "Bow": "https://static.wikia.nocookie.net/leagueoflegends/images/f/f0/Recurve_Bow_item_HD.png",
+    "Cloak": "https://static.wikia.nocookie.net/leagueoflegends/images/6/6b/Negatron_Cloak_item_HD.png",
+    "Belt": "https://static.wikia.nocookie.net/leagueoflegends/images/f/f2/Giants_Belt_item_HD.png",
+    "Glove": "https://static.wikia.nocookie.net/leagueoflegends/images/3/35/Sparring_Gloves_item_HD.png"
+  };
+
+  const components = Object.keys(icons);
+  let pool = {}, history = [], currentRound = [], roundNumber = 0;
+  let needs = {}, extras = {};
 
   function resetTracker() {
     pool = {};
     components.forEach(c => pool[c] = 0);
     history = [];
     currentRound = [];
+    roundNumber = 0;
     updateDisplay();
     logMessage("Tracker reset.");
+  }
+
+  function resetPlanning() {
+    components.forEach(c => {
+      needs[c] = 0;
+      extras[c] = 0;
+    });
+    updateDisplay();
   }
 
   function addComponent() {
@@ -98,16 +148,18 @@
   }
 
   function submitRound() {
-    if (currentRound.length === 0) {
+    const receivedCount = currentRound.length;
+    if (receivedCount === 0) {
       logMessage("Please add components before submitting a round.");
       return;
     }
-    components.forEach(c => pool[c] = (pool[c] || 0) + 1);
-    currentRound.forEach(c => pool[c] = pool[c] - 1);
+    components.forEach(c => pool[c] += receivedCount);
+    currentRound.forEach(c => pool[c] -= 1);
     history.push([...currentRound]);
     currentRound = [];
+    roundNumber++;
     updateDisplay();
-    logMessage("Round submitted.");
+    logMessage("Round " + roundNumber + " submitted with " + receivedCount + " items.");
   }
 
   function undoLastRound() {
@@ -116,22 +168,61 @@
       return;
     }
     let last = history.pop();
-    components.forEach(c => pool[c] = pool[c] - 1);
-    last.forEach(c => pool[c] = pool[c] + 1);
+    const receivedCount = last.length;
+    components.forEach(c => pool[c] -= receivedCount);
+    last.forEach(c => pool[c] += 1);
+    roundNumber--;
     updateDisplay();
     logMessage("Last round undone.");
   }
 
   function updateDisplay() {
-    const tableBody = document.getElementById("tracker-table-body");
-    tableBody.innerHTML = "";
+    const trackerTable = document.getElementById("tracker-table-body");
+    const planningTable = document.getElementById("planning-table-body");
+    trackerTable.innerHTML = "";
+    planningTable.innerHTML = "";
     let total = Object.values(pool).reduce((a, b) => a + b, 0);
+
     components.forEach(c => {
       let count = pool[c] || 0;
-      let percent = total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0%";
-      let row = `<tr><td>${c}</td><td>${count}</td><td>${percent}</td></tr>`;
-      tableBody.innerHTML += row;
+      let percentVal = total > 0 ? (count / total * 100).toFixed(1) : 0;
+      let colorClass = percentVal >= 15 ? "green" : percentVal >= 5 ? "orange" : "red";
+
+      // Tracker Table
+      trackerTable.innerHTML += `
+        <tr>
+          <td><img src="${icons[c]}" alt="${c}">${c}</td>
+          <td>${count}</td>
+          <td class="${colorClass}">${percentVal}%</td>
+        </tr>`;
+
+      // Planning Table
+      let need = needs[c] || 0;
+      let extra = extras[c] || 0;
+      let totalOwned = count + extra;
+      let stillNeeded = Math.max(0, need - totalOwned);
+      planningTable.innerHTML += `
+        <tr>
+          <td><img src="${icons[c]}" alt="${c}">${c}</td>
+          <td><input type="number" min="0" value="${need}" onchange="updateNeed('${c}', this.value)" style="width:60px"></td>
+          <td>${count}</td>
+          <td><input type="number" min="0" value="${extra}" onchange="updateExtra('${c}', this.value)" style="width:60px"></td>
+          <td>${totalOwned}</td>
+          <td>${stillNeeded}</td>
+        </tr>`;
     });
+
+    document.getElementById("roundCounter").innerText = "Round: " + roundNumber;
+  }
+
+  function updateNeed(component, value) {
+    needs[component] = parseInt(value) || 0;
+    updateDisplay();
+  }
+
+  function updateExtra(component, value) {
+    extras[component] = parseInt(value) || 0;
+    updateDisplay();
   }
 
   function logMessage(msg) {
@@ -143,7 +234,9 @@
     document.getElementById("submitBtn").addEventListener("click", submitRound);
     document.getElementById("undoBtn").addEventListener("click", undoLastRound);
     document.getElementById("resetBtn").addEventListener("click", resetTracker);
+    document.getElementById("resetPlanningBtn").addEventListener("click", resetPlanning);
     resetTracker();
+    resetPlanning();
   });
 </script>
 
